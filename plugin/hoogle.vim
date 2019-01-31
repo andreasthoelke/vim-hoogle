@@ -132,8 +132,31 @@ fun! HoogleLookup( search, args ) "{{{
     call s:ScratchMarkBuffer()
 
     execute '.!' . g:hoogle_search_bin . ' -n=' . g:hoogle_search_count  . ' "' . s:search . '"' . s:databases . a:args
-    setl nomodifiable
+    " setl nomodifiable
     
+    call PurescriptUnicode()
+    set syntax=purescript
+
+
+" --------------------------------------------------------------------------------
+" Macros defined in vimrc
+" format hoogle output from
+" Prelude print ∷ Show a ⇒ a → IO ()
+" to
+" -- Prelude 
+" print ∷ Show a ⇒ a → IO ()
+" let @o = 'f Jki-- jk9jj'
+" align the type-signature with EasyAlign
+" let @p = 'gaap '
+" --------------------------------------------------------------------------------
+
+    if a:args != ' --info'
+      normal gg
+      normal 10@o
+      normal gg
+      normal @p
+    endif
+
     let size = s:CountVisualLines()
 
     if size > g:hoogle_search_buf_size
@@ -142,8 +165,9 @@ fun! HoogleLookup( search, args ) "{{{
 
     execute 'resize ' . size
 
-    nnoremap <silent> <buffer> <cr> <esc>:call HoogleLineJump()<cr>
-    nnoremap <silent> <buffer> q <esc>:close<cr>
+    nnoremap <silent> <buffer> <c-]> <esc>:call HoogleLineJump()<cr>
+    nnoremap <silent> <buffer> <leader>ii <esc>:call HoogleImportIdentifier()<cr>
+    " nnoremap <silent> <buffer> q <esc>:close<cr>
     let b:hoogle_search = a:search
 
     if g:hoogle_search_jump_back == 1
@@ -155,6 +179,7 @@ fun! HoogleLookup( search, args ) "{{{
     endif
 endfunction "}}}
 
+
 " Search the current line and delete it
 fun! HoogleSearchLine() "{{{
     let search = getline( '.' )
@@ -162,17 +187,84 @@ fun! HoogleSearchLine() "{{{
     call HoogleLookup( search )
 endfunction "}}}
 
+" <leader>ii in the Hoogle detailed info dialog should import the identifier,
+" see:
+" /Users/andreas.thoelke/.vim/plugged/vim-hoogle/plugin/hoogle.vim
+" this is not working currently
+" fun! HoogleLineJump() "{{{
+" this works:
+" call Hsimp("Control.Monad", "replicateM")
+
+
+" EXAMPLES:
+" Prelude putStrLn ∷ String → IO ()
+" Data.Aeson data Value
+" Data.Aeson type Array = Vector Value
+" Data.Aeson class ToJSON a
+" Data.Aeson (.=) ∷ (KeyValue kv, ToJSON v) ⇒ Text → v → kv
+
+
+" THIS FN IS NOW IN VIMRC!
+" fun! HoogleImportIdentifier() "{{{
+"
+"   let l:prev_line = getline(line('.') -1)
+"   let l:cur_line  = getline('.')
+"
+"   let l:split_line_prev = split(l:prev_line)
+"   let l:split_line      = split(l:cur_line)
+"
+"   call HoogleCloseSearch()
+"   normal! <c-w>k
+"   " call Hsimp( l:split_line_prev[1], l:split_line[0] )
+"   " echo l:split_line[0] . l:split_line[1]
+"   
+"   " call Hsimp( l:split_line[0], l:split_line[1])
+"
+"   if &mod
+"     echo "Please save before importing!"
+"     return
+"   endif
+"
+"
+"   let l:imp1 = l:split_line[0]
+"   let l:imp2 = l:split_line[1]
+"
+"   if l:imp2 == "data" || l:imp2 == "type" || l:imp2 == "class"
+"     let l:imp2 = l:split_line[2]
+"   endif
+"
+"   if l:imp2[0] == "("
+"     let l:imp2 = StripString( l:imp2, "(" )
+"     let l:imp2 = StripString( l:imp2, ")" )
+"   endif
+"
+"   call Hsimp( l:imp1, l:imp2)
+"
+"   echo "imp2:" . l:imp2
+"   echo "imp1:" . l:imp1
+"
+"   "update format of the import list
+"   " call StylishHaskell()
+" endfunction "}}}
+
+
+
 fun! HoogleLineJump() "{{{
   if exists('b:hoogle_search') == 0
     return
   endif
-  let b:cur_line = getline('.')
+  let b:prev_line = getline(line('.') -1)
+  let b:cur_line  = getline('.')
+
   if len(b:cur_line) >= 2
-      let b:split_line = split(b:cur_line)
-      let b:hoogle_search = b:split_line[0] . '.' . b:split_line[1]       " since results are given in the format `Data.IntMap.Strict lookup :: Key -> IntMap a -> Maybe a`
-                                                                          " this results in a search of `Data.IntMap.Strict.lookup`
+      let b:split_line_prev = split(b:prev_line)
+      let b:split_line      = split(b:cur_line)
+      let b:hoogle_search = b:split_line[0] . '.' . b:split_line[1]       
+      " since results are given in the format `Data.IntMap.Strict lookup :: Key -> IntMap a -> Maybe a`
+                            " this results in a search of `Data.IntMap.Strict.lookup`
       call HoogleLookup( b:hoogle_search, ' --info' )
       unlet b:split_line
+      unlet b:split_line_prev
   else
       return
   endif
